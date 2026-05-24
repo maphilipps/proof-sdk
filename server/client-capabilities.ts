@@ -131,6 +131,17 @@ function respondUpgradeRequired(res: Response, payload: Record<string, unknown>)
   res.status(426).json(payload);
 }
 
+/**
+ * Returns true when the request carries an agent identity header (X-Agent-Id).
+ * Agents are not Proof web clients and must not be rejected for missing client
+ * version headers — their Bearer/share-token authentication is checked later
+ * by the individual route handlers.
+ */
+export function isAgentIdentifiedRequest(req: Request): boolean {
+  const agentId = req.header('x-agent-id');
+  return typeof agentId === 'string' && agentId.trim().length > 0;
+}
+
 export function enforceApiClientCompatibility(req: Request, res: Response, next: NextFunction): void {
   if (!shouldEnforceApiCompatibility(req.path || '/')) {
     next();
@@ -146,6 +157,14 @@ export function enforceApiClientCompatibility(req: Request, res: Response, next:
 }
 
 export function enforceBridgeClientCompatibility(req: Request, res: Response, next: NextFunction): void {
+  // Agents identify themselves via X-Agent-Id. They are not Proof web clients
+  // and do not send x-proof-client-* headers. Route handlers validate their
+  // Bearer/share tokens independently — no client-version gate needed here.
+  if (isAgentIdentifiedRequest(req)) {
+    next();
+    return;
+  }
+
   const validation = validateClientHeaders(req);
   if (!validation.ok) {
     respondUpgradeRequired(res, validation.payload);

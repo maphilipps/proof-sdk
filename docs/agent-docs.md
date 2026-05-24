@@ -20,6 +20,44 @@ The reusable `Proof SDK` surface is mounted in parallel at:
 - `POST /documents/:slug/bridge/rewrite`
 - `POST /documents/:slug/bridge/presence`
 
+## Client Compatibility Headers (minProtocol = 3)
+
+The server enforces a **client version check** on all `/documents/:slug/bridge/*` routes
+and all `/api/*` routes (except `/api/agent/*`). Web browser clients must send:
+
+| Header | Example value | Required |
+|--------|---------------|---------|
+| `x-proof-client-version` | `0.30.0` | ≥ 0.30.0 |
+| `x-proof-client-build` | `release` | any non-empty string |
+| `x-proof-client-protocol` | `3` | must be `3` |
+
+**Agents do not need these headers.** Add `X-Agent-Id: ai:<your-name>` to any bridge
+request and the version check is skipped. The route handler still validates your
+Bearer / share token as usual.
+
+```bash
+# Agent calling bridge/comments — correct headers:
+curl -sS -X POST "https://<host>/documents/<slug>/bridge/comments" \
+  -H "Authorization: Bearer <token>" \
+  -H "X-Agent-Id: ai:my-agent" \
+  -H "Content-Type: application/json" \
+  -d '{"body":"My comment","by":"ai:my-agent","anchor":"doc"}'
+
+# Web client calling bridge/comments — must include all three version headers:
+curl -sS -X POST "https://<host>/documents/<slug>/bridge/comments" \
+  -H "x-proof-client-version: 0.30.0" \
+  -H "x-proof-client-build: release" \
+  -H "x-proof-client-protocol: 3" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"body":"My comment","by":"human","anchor":"doc"}'
+```
+
+> **Legacy paths removed**: `POST /api/agent/:slug/comments` and
+> `POST /api/agent/:slug/suggestions` never existed as first-class routes.
+> They now return **410 Gone** with a JSON body that lists the upgrade paths
+> (`/documents/:slug/bridge/comments` or `/documents/:slug/ops`).
+
 ## Which Editing Method Should I Use?
 
 Proof has three editing approaches. **Pick one — don't mix them.**

@@ -3972,6 +3972,59 @@ agentRoutes.post('/:slug/events/ack', (req: Request, res: Response) => {
   res.json({ success: true, acked });
 });
 
+// Legacy aliases — these paths were documented in early adProof versions but never
+// existed as first-class routes. Return 410 Gone with a clear upgrade path so that
+// agents get actionable guidance instead of "Invalid slug" from the catch-all.
+agentRoutes.post('/:slug/comments', (req: Request, res: Response) => {
+  const slug = getSlug(req);
+  res.status(410).json({
+    success: false,
+    error: 'Gone — route removed',
+    code: 'LEGACY_ROUTE_REMOVED',
+    message:
+      'POST /:slug/comments is no longer supported. ' +
+      'Use POST /documents/:slug/bridge/comments (add X-Agent-Id header to skip client-version check) ' +
+      'or the canonical POST /documents/:slug/ops with op:"comment.add".',
+    upgradePaths: [
+      {
+        method: 'POST',
+        path: slug ? `/documents/${slug}/bridge/comments` : '/documents/:slug/bridge/comments',
+        note: 'Bridge route — add header X-Agent-Id: ai:<name>',
+      },
+      {
+        method: 'POST',
+        path: slug ? `/documents/${slug}/ops` : '/documents/:slug/ops',
+        note: 'Canonical ops route — body: { op: "comment.add", ... }',
+      },
+    ],
+  });
+});
+
+agentRoutes.post('/:slug/suggestions', (req: Request, res: Response) => {
+  const slug = getSlug(req);
+  res.status(410).json({
+    success: false,
+    error: 'Gone — route removed',
+    code: 'LEGACY_ROUTE_REMOVED',
+    message:
+      'POST /:slug/suggestions is no longer supported. ' +
+      'Use POST /documents/:slug/bridge/suggestions (add X-Agent-Id header to skip client-version check) ' +
+      'or the canonical POST /documents/:slug/ops with op:"suggestion.add".',
+    upgradePaths: [
+      {
+        method: 'POST',
+        path: slug ? `/documents/${slug}/bridge/suggestions` : '/documents/:slug/bridge/suggestions',
+        note: 'Bridge route — add header X-Agent-Id: ai:<name>',
+      },
+      {
+        method: 'POST',
+        path: slug ? `/documents/${slug}/ops` : '/documents/:slug/ops',
+        note: 'Canonical ops route — body: { op: "suggestion.add", ... }',
+      },
+    ],
+  });
+});
+
 agentRoutes.use(async (req: Request, res: Response) => {
   const slug = getSlug(req);
   const method = req.method.toUpperCase();
