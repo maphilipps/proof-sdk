@@ -13,6 +13,7 @@ import { shareWebRoutes } from './share-web-routes.js';
 import { createAdProofSkillsRouter } from './adproof-skills-route.js';
 import { createAdProofCoverageRouter } from './adproof-coverage-route.js';
 import { createAdProofMetricsRouter } from './adproof-metrics-route.js';
+import { createAdProofRfpRouter } from './adproof-rfp-route.js';
 import {
   capabilitiesPayload,
   enforceApiClientCompatibility,
@@ -127,6 +128,7 @@ async function main(): Promise<void> {
     app.use(createAdProofSkillsRouter());
     app.use(createAdProofCoverageRouter());
     app.use(createAdProofMetricsRouter());
+    app.use(createAdProofRfpRouter());
   }
   app.use('/api', enforceApiClientCompatibility, apiRoutes);
   app.use('/api/agent', agentRoutes);

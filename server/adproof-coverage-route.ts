@@ -14,6 +14,8 @@
  * Aggregations-Logik ist inline (kein Cross-Package-Import aus adProof src/).
  */
 import { Router, type Request, type Response } from 'express';
+import { readdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { getDocumentBySlug, resolveDocumentAccessRole } from './db.js';
 
 // ---------------------------------------------------------------------------
@@ -116,10 +118,19 @@ function aggregate(proposalId: string, _spans: SpanRef[]): CoverageMatrix {
 // Router
 // ---------------------------------------------------------------------------
 
+async function checkRfpIndexed(slug: string): Promise<boolean> {
+  try {
+    const files = await readdir(join('proposals', slug, 'rfp'));
+    return files.filter((f) => !f.startsWith('.')).length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export function createAdProofCoverageRouter(): Router {
   const router = Router();
 
-  router.get('/documents/:slug/adproof/coverage', (req: Request, res: Response) => {
+  router.get('/documents/:slug/adproof/coverage', async (req: Request, res: Response) => {
     // slug aus params — analog zum getSlug()-Pattern in agent-routes.ts
     const rawSlug = req.params.slug;
     const slug = typeof rawSlug === 'string' && rawSlug.trim() ? rawSlug.trim()
@@ -149,12 +160,13 @@ export function createAdProofCoverageRouter(): Router {
     const marks = parseMarksJson(doc.marks);
     const spans = marksToSpans(marks);
     const matrix = aggregate(slug, spans);
+    const rfpIndexed = await checkRfpIndexed(slug);
 
     res.json({
       success: true,
       matrix,
       spans,
-      rfpIndexed: false, // TODO: true wenn RFP-Indexer in #17 verdrahtet
+      rfpIndexed,
     });
   });
 
