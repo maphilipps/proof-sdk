@@ -42,6 +42,7 @@ import { codeBlockExtPlugins } from './schema/code-block-ext';
 import { frontmatterSchema } from './schema/frontmatter';
 import { remarkFrontmatterPlugin } from './schema/remark-frontmatter-plugin';
 import { authoredTrackerPlugin } from './plugins/authored-tracker';
+import { provenanceInlinePlugin } from './plugins/provenance-inline';
 import { heatmapPlugin, heatmapCtx } from './plugins/heatmap-decorations';
 import { marksSyncPlugin } from './plugins/marks-sync';
 import {
@@ -1230,6 +1231,7 @@ class ProofEditorImpl implements ProofEditor {
       .use(agentCursorCtx)
       // Register plugins
       .use(authoredTrackerPlugin)
+      .use(provenanceInlinePlugin)
       .use(heatmapPlugin)
       .use(agentCursorPlugin)
       // Register suggestions plugin
