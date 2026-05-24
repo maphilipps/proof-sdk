@@ -25,7 +25,7 @@ import { searchRfp, createMockEmbeddingProvider } from '../../src/rfp-indexer/in
 // Validation helpers (identisch zu tests/unit/rfp-route.test.ts — inline)
 // ---------------------------------------------------------------------------
 
-const SUPPORTED_EXTENSIONS = new Set(['.txt', '.md']);
+const SUPPORTED_EXTENSIONS = new Set(['.txt', '.md', '.pdf', '.docx']);
 
 function validateRfpFilename(filename: string): { ok: true; ext: string } | { ok: false; error: string } {
   if (!filename || typeof filename !== 'string' || !filename.trim()) {
@@ -38,7 +38,7 @@ function validateRfpFilename(filename: string): { ok: true; ext: string } | { ok
   }
   const ext = trimmed.slice(dotIdx).toLowerCase();
   if (!SUPPORTED_EXTENSIONS.has(ext)) {
-    return { ok: false, error: `Format "${ext}" nicht unterstützt. Erlaubt: .txt, .md` };
+    return { ok: false, error: `Format "${ext}" nicht unterstützt. Erlaubt: .txt, .md, .pdf, .docx` };
   }
   return { ok: true, ext };
 }
@@ -135,7 +135,9 @@ export function createAdProofRfpRouter(): Router {
         res.json({ success: true, ...result });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        if (msg.includes('UnsupportedFormatError')) {
+        if (msg.includes('OcrRequiredError')) {
+          res.status(400).json({ success: false, code: 'OCR_REQUIRED', error: msg });
+        } else if (msg.includes('UnsupportedFormatError')) {
           res.status(422).json({ success: false, error: msg });
         } else {
           res.status(500).json({ success: false, error: 'Upload fehlgeschlagen', detail: msg });
