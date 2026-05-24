@@ -14,9 +14,10 @@
  * Aggregations-Logik ist inline (kein Cross-Package-Import aus adProof src/).
  */
 import { Router, type Request, type Response } from 'express';
-import { readdir } from 'node:fs/promises';
-import { join } from 'node:path';
 import { getDocumentBySlug, resolveDocumentAccessRole } from './db.js';
+
+// Cross-package import (tsx resolves .js → .ts at runtime)
+import { isRfpIndexed } from '../../src/rfp-indexer/index.js';
 
 // ---------------------------------------------------------------------------
 // Types — Subset der Coverage-Types aus src/coverage-aggregator/types.ts
@@ -119,12 +120,9 @@ function aggregate(proposalId: string, _spans: SpanRef[]): CoverageMatrix {
 // ---------------------------------------------------------------------------
 
 async function checkRfpIndexed(slug: string): Promise<boolean> {
-  try {
-    const files = await readdir(join('proposals', slug, 'rfp'));
-    return files.filter((f) => !f.startsWith('.')).length > 0;
-  } catch {
-    return false;
-  }
+  // Prüft über den Vektor-Store ob Chunks für diese Proposal vorhanden sind.
+  // count() > 0 entspricht "collectionExists && pointCount > 0" (Issue #34 AC).
+  return isRfpIndexed(slug);
 }
 
 export function createAdProofCoverageRouter(): Router {
