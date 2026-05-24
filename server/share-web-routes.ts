@@ -233,7 +233,10 @@ function injectShareHtmlDiscoveryTags(
     out = out.replace('</head>', `${pageTitle}\n</head>`);
   }
   if (out.includes('</head>')) {
-    out = out.replace('</head>', `${metaTags}\n${configScript}\n</head>`);
+    const adProofScript = process.env.ADPROOF_MODE === '1'
+      ? '\n<script src="/adproof/agent-invite-modal.js" defer></script>'
+      : '';
+    out = out.replace('</head>', `${metaTags}\n${configScript}${adProofScript}\n</head>`);
   }
   out = out.replace(/<body\b[^>]*>/i, (match) => `${match}\n${noscript}\n${agentDiv}`);
   return out;

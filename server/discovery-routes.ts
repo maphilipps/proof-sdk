@@ -70,8 +70,13 @@ function loadAgentDocsMarkdown(): string | null {
 discoveryRoutes.get('/.well-known/agent.json', (req: Request, res: Response) => {
   const base = getPublicBaseUrl(req);
   const apiBase = base ? `${base}/api` : '/api';
-  const docsUrl = base ? `${base}${AGENT_DOCS_PATH}` : AGENT_DOCS_PATH;
-  const skillUrl = base ? `${base}/proof.SKILL.md` : '/proof.SKILL.md';
+  const isAdProof = process.env.ADPROOF_MODE === '1';
+  const docsUrl = isAdProof
+    ? (base ? `${base}/adproof/agent-docs.html` : '/adproof/agent-docs.html')
+    : (base ? `${base}${AGENT_DOCS_PATH}` : AGENT_DOCS_PATH);
+  const skillUrl = isAdProof
+    ? (base ? `${base}/adproof.SKILL.md` : '/adproof.SKILL.md')
+    : (base ? `${base}/proof.SKILL.md` : '/proof.SKILL.md');
   const setupUrl = base ? `${base}/agent-setup` : '/agent-setup';
   const shareBase = base || '';
 
@@ -86,8 +91,10 @@ discoveryRoutes.get('/.well-known/agent.json', (req: Request, res: Response) => 
 
   res.setHeader('Cache-Control', 'public, max-age=300');
   res.json({
-    name: 'Proof Editor',
-    description: 'Agent-native markdown editor with collaborative sharing and provenance tracking',
+    name: isAdProof ? 'adProof' : 'Proof Editor',
+    description: isAdProof
+      ? 'Agent-native RFP proposal workspace with provenance tracking, Bridge-Tools, and proposal SKILLs'
+      : 'Agent-native markdown editor with collaborative sharing and provenance tracking',
     api_base: apiBase,
     docs_url: docsUrl,
     skill_url: skillUrl,
