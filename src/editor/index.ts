@@ -1163,6 +1163,35 @@ class ProofEditorImpl implements ProofEditor {
     }
     this.applyTopChromeForMode();
 
+    // FIX-4 (Issue #20): Watchdog — wenn ProseMirror nach 8 s nicht gemountet ist,
+    // einen sichtbaren Fallback-Banner mit Recovery-Optionen einblenden statt
+    // den User mit "Loading editor..." stehen zu lassen.
+    const failTimeout = setTimeout(() => {
+      if (root.querySelector('.ProseMirror')) return; // mounted in time
+      if (document.getElementById('editor-fail-banner')) return; // banner exists
+      const cfg = (window as { __PROOF_CONFIG__?: { shareSlug?: string; shareToken?: string } }).__PROOF_CONFIG__ ?? {};
+      const dashUrl = cfg.shareSlug && cfg.shareToken
+        ? `/adproof/doc.html?slug=${encodeURIComponent(cfg.shareSlug)}&token=${encodeURIComponent(cfg.shareToken)}`
+        : '/adproof/';
+      const banner = document.createElement('div');
+      banner.id = 'editor-fail-banner';
+      banner.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#fff;color:#0f172a;border:2px solid #dc2626;border-radius:10px;padding:18px 24px;box-shadow:0 8px 32px rgba(0,0,0,0.18);z-index:99999;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;max-width:560px;line-height:1.5';
+      banner.innerHTML = '<div style="display:flex;align-items:flex-start;gap:14px"><div style="font-size:26px;line-height:1">⚠️</div><div style="flex:1"><div style="font-weight:600;margin-bottom:4px;font-size:15px">Editor konnte nicht geladen werden</div><div style="font-size:13px;color:#64748b;margin-bottom:12px">Das Editor-Bundle ist nach 8 s nicht vollständig gemountet. Möglicherweise ein Bundle-Fehler, ein Netzwerk-Problem oder ein Browser-Inkompatibilität. Browser-Console hat Details.</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button id="editor-fail-retry" style="padding:8px 14px;border:none;background:#2563eb;color:#fff;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit;font-weight:500">Erneut versuchen</button><a href="' + dashUrl + '" style="padding:8px 14px;border:1px solid #e2e8f0;background:#fff;color:#2563eb;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500">Dashboard öffnen ↗</a></div></div></div>';
+      document.body.appendChild(banner);
+      const retry = document.getElementById('editor-fail-retry');
+      if (retry) retry.addEventListener('click', () => location.reload());
+    }, 8000);
+    // Wenn Editor irgendwann doch mountet (slow Net), Banner wieder weg + Timeout cancel
+    const cleanupBanner = new MutationObserver(() => {
+      if (root.querySelector('.ProseMirror')) {
+        clearTimeout(failTimeout);
+        const b = document.getElementById('editor-fail-banner');
+        if (b) b.remove();
+        cleanupBanner.disconnect();
+      }
+    });
+    cleanupBanner.observe(root, { childList: true, subtree: true });
+
     const prismPlugin = await loadPrismPlugin();
 
     // Clear the loading indicator
