@@ -85,6 +85,10 @@ import { arrowCommentPlugin } from './plugins/arrow-comment';
 import { markdownLinkClickPlugin } from './plugins/markdown-link-click';
 import { mermaidDiagramsPlugin } from './plugins/mermaid-diagrams';
 import { taskCheckboxesPlugin } from './plugins/task-checkboxes';
+import {
+  adProofAffordancePlugins,
+  createAdProofAffordanceConfig,
+} from './adproof-plugins';
 import type { Node as ProseMirrorNode } from '@milkdown/kit/prose/model';
 import type { EditorView } from '@milkdown/kit/prose/view';
 import { TextSelection } from '@milkdown/kit/prose/state';
@@ -1273,6 +1277,10 @@ class ProofEditorImpl implements ProofEditor {
         // Initialize heatmap context
         ctx.set(heatmapCtx.key, { mode: this.heatMapMode });
       })
+      // Register adProof Notion-affordances (tooltip / slash / block-handle).
+      // shouldShow callbacks use canEditInRuntime() so share-mode-hide is dynamic.
+      .config(createAdProofAffordanceConfig())
+      .use(adProofAffordancePlugins)
       .create();
 
     this.editor.action((ctx) => {

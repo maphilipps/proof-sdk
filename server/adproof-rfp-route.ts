@@ -25,7 +25,7 @@ import { searchRfp, createMockEmbeddingProvider } from '../../src/rfp-indexer/in
 // Validation helpers (identisch zu tests/unit/rfp-route.test.ts — inline)
 // ---------------------------------------------------------------------------
 
-const SUPPORTED_EXTENSIONS = new Set(['.txt', '.md', '.pdf', '.docx']);
+const SUPPORTED_EXTENSIONS = new Set(['.txt', '.md', '.pdf', '.docx', '.xlsx']);
 
 function validateRfpFilename(filename: string): { ok: true; ext: string } | { ok: false; error: string } {
   if (!filename || typeof filename !== 'string' || !filename.trim()) {
@@ -38,7 +38,7 @@ function validateRfpFilename(filename: string): { ok: true; ext: string } | { ok
   }
   const ext = trimmed.slice(dotIdx).toLowerCase();
   if (!SUPPORTED_EXTENSIONS.has(ext)) {
-    return { ok: false, error: `Format "${ext}" nicht unterstützt. Erlaubt: .txt, .md, .pdf, .docx` };
+    return { ok: false, error: `Format "${ext}" nicht unterstützt. Erlaubt: .txt, .md, .pdf, .docx, .xlsx` };
   }
   return { ok: true, ext };
 }
