@@ -89,6 +89,7 @@ import {
   adProofAffordancePlugins,
   createAdProofAffordanceConfig,
 } from './adproof-plugins';
+import { applyDraftWatermark } from './plugins/draft-watermark';
 import type { Node as ProseMirrorNode } from '@milkdown/kit/prose/model';
 import type { EditorView } from '@milkdown/kit/prose/view';
 import { TextSelection } from '@milkdown/kit/prose/state';
@@ -1464,6 +1465,15 @@ class ProofEditorImpl implements ProofEditor {
 	      }
 
       this.showShareBanner(doc.viewers ?? 0);
+
+      // DRAFT watermark — show when doc is not in submission state.
+      // TODO: bind `isSubmission` to a real doc.submittedAt / share_state=SUBMISSION
+      //       field once the data model is extended. MVP: always show.
+      const watermarkEl = document.getElementById('draft-watermark');
+      if (watermarkEl instanceof HTMLElement) {
+        applyDraftWatermark(watermarkEl, false /* isSubmission */);
+      }
+
       this.ensureShareWebSocketConnection();
 
       // Prefer collab runtime path when available.

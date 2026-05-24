@@ -1028,6 +1028,24 @@
     .milkdown .prov-human   { background-color: rgba(110, 231, 183, 0.18); border-radius: 2px; }
     .milkdown .prov-ai-free { background-color: rgba(165, 180, 252, 0.22); border-radius: 2px; }
 
+    /* adProof: DRAFT Watermark Banner */
+    .milkdown-draft-watermark {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      padding: 6px 16px;
+      background: rgba(251, 191, 36, 0.12);
+      border-top: 1px solid rgba(251, 191, 36, 0.35);
+      color: rgba(120, 80, 0, 0.75);
+      font-size: 11px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      text-align: center;
+      pointer-events: none;
+      user-select: none;
+    }
+
   </style>
 </head>
 <body>
@@ -1037,6 +1055,9 @@
       <div id="editor">
         <div class="loading">Loading editor...</div>
       </div>
+    </div>
+    <div id="draft-watermark" class="milkdown-draft-watermark" hidden>
+      Arbeitskopie — Submission-Stand siehe <code>exports/</code>
     </div>
   </div>
   <script>
