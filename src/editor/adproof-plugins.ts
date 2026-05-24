@@ -21,7 +21,9 @@ import type { Ctx } from '@milkdown/ctx';
 import { tooltipFactory, TooltipProvider } from '@milkdown/plugin-tooltip';
 import { slashFactory, SlashProvider } from '@milkdown/plugin-slash';
 import { block } from '@milkdown/plugin-block';
+import { upload, uploadConfig } from '@milkdown/plugin-upload';
 import { canEditInRuntime } from './plugins/share-permissions';
+import { createAssetUploader } from './plugins/image-upload';
 
 // ---------------------------------------------------------------------------
 // Pure helper — testable without DOM
@@ -51,7 +53,7 @@ export const [slashSpec, slashPlugin] = slashFactory('adproof-slash');
 // ---------------------------------------------------------------------------
 
 /**
- * All adProof Notion-affordance plugins in a single flat array.
+ * All adProof Notion-affordance + upload plugins in a single flat array.
  * Wire into the editor builder: `.use(adProofAffordancePlugins)`.
  */
 export const adProofAffordancePlugins = [
@@ -60,6 +62,7 @@ export const adProofAffordancePlugins = [
   slashSpec,
   slashPlugin,
   ...block,
+  ...upload,
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -103,19 +106,31 @@ function buildSlashDOM(): HTMLElement {
 // Config factory — pass to editorBuilder.config(...)
 // ---------------------------------------------------------------------------
 
+/** Options für `createAdProofAffordanceConfig`. */
+export interface AdProofAffordanceConfigOptions {
+  /** Dokument-Slug für den Assets-Upload-Endpoint (`/documents/{slug}/assets/upload`). */
+  slug?: string;
+  /** Callback der das aktuelle Bearer-Token zurückgibt. */
+  getToken?: () => string;
+}
+
 /**
- * Returns a Milkdown config callback that wires `TooltipProvider` and
- * `SlashProvider` into their respective plugin specs.
+ * Returns a Milkdown config callback that wires `TooltipProvider`,
+ * `SlashProvider`, and the upload plugin into their respective specs.
  *
- * The providers use `shouldShow: () => canEditInRuntime()` so that
- * `setShareRuntimeCapabilities({ canEdit: false })` hides them instantly
- * at runtime without recreating the editor.
+ * - Tooltip / Slash: respektieren `canEditInRuntime()` für Share-Mode-Hide
+ * - Upload: aktiviert Drag-Drop + Paste für PNG/JPEG/WEBP wenn `slug` + `getToken`
+ *   übergeben werden; fällt auf den Milkdown-Default-Uploader zurück falls nicht.
  *
  * ```ts
- * editorBuilder.config(createAdProofAffordanceConfig()).use(adProofAffordancePlugins)
+ * editorBuilder
+ *   .config(createAdProofAffordanceConfig({ slug, getToken }))
+ *   .use(adProofAffordancePlugins)
  * ```
  */
-export function createAdProofAffordanceConfig(): (ctx: Ctx) => void {
+export function createAdProofAffordanceConfig(
+  opts: AdProofAffordanceConfigOptions = {},
+): (ctx: Ctx) => void {
   return (ctx: Ctx) => {
     // ----- Tooltip -----
     const tooltipContent = buildTooltipDOM();
@@ -144,5 +159,14 @@ export function createAdProofAffordanceConfig(): (ctx: Ctx) => void {
         destroy: () => slashProvider.destroy(),
       }),
     });
+
+    // ----- Upload -----
+    if (opts.slug && opts.getToken) {
+      ctx.update(uploadConfig.key, (prev) => ({
+        ...prev,
+        uploader: createAssetUploader(opts.slug!, opts.getToken!),
+        enableHtmlFileUploader: true,
+      }));
+    }
   };
 }
