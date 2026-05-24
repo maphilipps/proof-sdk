@@ -18,7 +18,7 @@ import { join } from 'node:path';
 import { getDocumentBySlug, resolveDocumentAccessRole } from './db.js';
 
 // Cross-package imports (tsx resolves .js → .ts at runtime)
-import { uploadRfp, listRfpFiles } from '../../src/rfp-source-orchestrator/index.js';
+import { uploadRfp, listRfpFiles, deleteRfpFile, reindexRfp, DeleteForbiddenError } from '../../src/rfp-source-orchestrator/index.js';
 import { searchRfp, createMockEmbeddingProvider } from '../../src/rfp-indexer/index.js';
 
 // ---------------------------------------------------------------------------
@@ -49,6 +49,14 @@ function parseFilenameHeader(raw: string | undefined): string | null {
   // Pfad-Traversal abwehren
   if (decoded.includes('/') || decoded.includes('\\') || decoded.includes('..')) return null;
   return decoded || null;
+}
+
+function parseFilenameFromParam(raw: string | undefined): string | null {
+  if (!raw || typeof raw !== 'string' || !raw.trim()) return null;
+  const trimmed = raw.trim();
+  // Pfad-Traversal abwehren (auch nach Express-Dekodierung)
+  if (trimmed.includes('/') || trimmed.includes('\\') || trimmed.includes('..')) return null;
+  return trimmed;
 }
 
 // ---------------------------------------------------------------------------
@@ -210,6 +218,91 @@ export function createAdProofRfpRouter(): Router {
       res.status(500).json({ success: false, error: 'Suche fehlgeschlagen', detail: msg });
     }
   });
+
+  // ── DELETE /documents/:slug/rfp/files/:filename ──────────────────────────────
+  // Explicit approval required — caller must be 'human' (AI → 403 FORBIDDEN)
+  router.delete(
+    '/documents/:slug/rfp/files/:filename',
+    async (req: Request, res: Response): Promise<void> => {
+      const slug = resolveSlug(req.params.slug) ?? '';
+      if (!slug) {
+        res.status(400).json({ success: false, error: 'Invalid slug' });
+        return;
+      }
+
+      const role = resolveAuth(req, slug);
+      if (!role) {
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
+      }
+
+      const doc = getDocumentBySlug(slug);
+      if (!doc) {
+        res.status(404).json({ success: false, error: 'Document not found' });
+        return;
+      }
+
+      const filename = parseFilenameFromParam(typeof req.params.filename === 'string' ? req.params.filename : undefined);
+      if (!filename) {
+        res.status(400).json({ success: false, error: 'Ungültiger Dateiname' });
+        return;
+      }
+
+      // Caller aus query-param oder Header; fehlt → 'human' (UI-Default)
+      const callerParam = req.query.caller ?? req.header('x-caller');
+      const caller: 'ai' | 'human' = callerParam === 'ai' ? 'ai' : 'human';
+
+      try {
+        await deleteRfpFile(slug, filename, caller);
+        res.json({ success: true, deleted: filename });
+      } catch (err: unknown) {
+        if (err instanceof DeleteForbiddenError) {
+          res.status(403).json({ success: false, code: 'FORBIDDEN', error: err.message });
+        } else {
+          const msg = err instanceof Error ? err.message : String(err);
+          res.status(500).json({ success: false, error: 'Löschen fehlgeschlagen', detail: msg });
+        }
+      }
+    },
+  );
+
+  // ── POST /documents/:slug/rfp/reindex/:filename ───────────────────────────────
+  router.post(
+    '/documents/:slug/rfp/reindex/:filename',
+    async (req: Request, res: Response): Promise<void> => {
+      const slug = resolveSlug(req.params.slug) ?? '';
+      if (!slug) {
+        res.status(400).json({ success: false, error: 'Invalid slug' });
+        return;
+      }
+
+      const role = resolveAuth(req, slug);
+      if (!role) {
+        res.status(401).json({ success: false, error: 'Unauthorized' });
+        return;
+      }
+
+      const doc = getDocumentBySlug(slug);
+      if (!doc) {
+        res.status(404).json({ success: false, error: 'Document not found' });
+        return;
+      }
+
+      const filename = parseFilenameFromParam(typeof req.params.filename === 'string' ? req.params.filename : undefined);
+      if (!filename) {
+        res.status(400).json({ success: false, error: 'Ungültiger Dateiname' });
+        return;
+      }
+
+      try {
+        await reindexRfp(slug, filename, provider);
+        res.json({ success: true, reindexed: filename });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        res.status(500).json({ success: false, error: 'Reindex fehlgeschlagen', detail: msg });
+      }
+    },
+  );
 
   return router;
 }
